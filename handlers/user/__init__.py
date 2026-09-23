@@ -1,9 +1,8 @@
-from aiogram import F, Router
-from aiogram.filters import CommandStart, StateFilter
+from aiogram import Router
+from aiogram.filters import Command, CommandStart
 
-import states
 from filters import ChatTypeFilter
-from . import start
+from . import start, help
 
 
 def prepare_router():
@@ -11,8 +10,6 @@ def prepare_router():
     user_router.message.filter(ChatTypeFilter("private"))
 
     user_router.message.register(start.start, CommandStart())
-    user_router.message.register(
-        start.start, F.text == "🏠В главное меню", StateFilter(states.user.UserMainMenu.menu)
-    )
+    user_router.message.register(help.bot_help, Command("help"))
 
     return user_router
