@@ -32,3 +32,6 @@ class UsersRepo(PostgresConnection):
     async def count_users(self) -> int:
         row = await self._fetchrow("SELECT COUNT(*) AS count FROM users", None, Count)
         return row.count if row else 0
+
+    async def all_users(self) -> list[User]:
+        return await self._fetch("SELECT * FROM users", None, User)

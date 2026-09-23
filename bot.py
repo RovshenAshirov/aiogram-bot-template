@@ -12,7 +12,11 @@ from aiohttp import web
 from redis.asyncio import ConnectionPool, Redis
 
 from data import config
+from db.db_api.users import CREATE_USERS_TABLE
 from handlers.admin import prepare_router as prepare_admin_router
+from handlers.channel import prepare_router as prepare_channel_router
+from handlers.error import prepare_router as prepare_error_router
+from handlers.group import prepare_router as prepare_group_router
 from handlers.user import prepare_router as prepare_user_router
 from middlewares.logging import StructLoggingMiddleware
 from utils.logging import setup_logger
@@ -28,6 +32,7 @@ async def create_db_connections(dp: Dispatcher):
         min_size=1,
         max_size=3,
     )
+    await db_pool.execute(CREATE_USERS_TABLE)
     dp["db_pool"] = db_pool
     redis_pool = ConnectionPool(
         host=config.CACHE_HOST,
@@ -52,6 +57,9 @@ async def create_db_connections(dp: Dispatcher):
 def setup_handlers(dp: Dispatcher):
     dp.include_router(prepare_admin_router())
     dp.include_router(prepare_user_router())
+    dp.include_router(prepare_group_router())
+    dp.include_router(prepare_channel_router())
+    dp.include_router(prepare_error_router())
 
 
 def setup_middlewares(dp: Dispatcher):
