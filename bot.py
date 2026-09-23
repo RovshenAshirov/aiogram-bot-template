@@ -1,9 +1,10 @@
 import asyncio
 
 import aiojobs
-import asyncpg as asyncpg
+import asyncpg
 import orjson
 from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.client.telegram import TelegramAPIServer
 from aiogram.fsm.storage.redis import RedisStorage
@@ -93,16 +94,9 @@ async def on_startup_webhook(app: web.Application):
 
 async def on_shutdown_webhook(app: web.Application):
     dp: Dispatcher = app["dp"]
-    # noinspection PyProtectedMember
-    for i in [app, *app._subapps]:  # dirty
-        if "scheduler" in i:
-            scheduler: aiojobs.Scheduler = i["scheduler"]
-            scheduler._closed = True
-            while scheduler.pending_count != 0:
-                dp["aiogram_logger"].info(
-                    f"Waiting for {scheduler.pending_count} tasks to complete"
-                )
-                await asyncio.sleep(1)
+    scheduler: aiojobs.Scheduler = app["scheduler"]  # shared with subapps
+    dp["aiogram_logger"].info(f"Waiting for {scheduler.active_count} tasks to complete")
+    await scheduler.wait_and_close()
     bot: Bot = app["bot"]
     await bot.session.close()
     dp["aiogram_logger"].info("Stopped webhook")
@@ -149,7 +143,7 @@ async def main():
         )
     else:
         session = AiohttpSession(json_loads=orjson.loads)
-    bot = Bot(config.BOT_TOKEN, parse_mode="HTML", session=session)
+    bot = Bot(config.BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"), session=session)
 
     dp = Dispatcher(
         storage=RedisStorage(

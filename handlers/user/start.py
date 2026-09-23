@@ -5,8 +5,9 @@ import states.user
 
 
 async def start(msg: types.Message, state: FSMContext):
-    m = [
-        f'Hello, <a href="tg://user?id={msg.from_user.id}">{html.quote(msg.from_user.full_name)}</a>'
-    ]
+    user = msg.from_user
+    if user is None:  # channel posts / anonymous admins
+        return
+    m = [f'Hello, <a href="tg://user?id={user.id}">{html.quote(user.full_name)}</a>']
     await msg.answer("\n".join(m))
     await state.set_state(states.user.UserMainMenu.menu)

@@ -2,7 +2,7 @@ import secrets
 
 import aiohttp.web
 import aiojobs
-from aiogram import Bot, Dispatcher, types
+from aiogram import Bot, Dispatcher
 from aiohttp import web
 
 from data import config
@@ -10,8 +10,7 @@ from data import config
 tg_updates_app = web.Application()
 
 
-async def process_update(upd: types.Update, bot: Bot, dp: Dispatcher):
-    Bot.set_current(bot)
+async def process_update(upd: dict, bot: Bot, dp: Dispatcher):
     await dp.feed_webhook_update(bot, upd)
 
 
@@ -29,9 +28,7 @@ async def execute(req: web.Request) -> web.Response:
     if scheduler.closed:
         raise web.HTTPServiceUnavailable(reason="Closed queue")
     await scheduler.spawn(
-        process_update(
-            types.Update(**(await req.json())), req.app["bot"], req.app["dp"]
-        )
+        process_update(await req.json(), req.app["bot"], req.app["dp"])
     )
     return web.Response()
 

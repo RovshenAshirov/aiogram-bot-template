@@ -1,5 +1,3 @@
-import uuid
-
 import orjson
 import pydantic
 
@@ -10,8 +8,4 @@ def orjson_dumps(v, *, default):
 
 
 class BaseModel(pydantic.BaseModel):
-    class Config:
-        json_loads = orjson.loads
-        json_dumps = orjson_dumps
-
-        json_encoders = {uuid.UUID: lambda x: f"{x}"}
+    pass  # pydantic v2 serializes UUID to str natively

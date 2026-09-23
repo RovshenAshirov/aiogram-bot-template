@@ -16,7 +16,7 @@ class DefaultConstructor:
         "request_contact",
         "request_location",
         "request_poll",
-        "request_user",
+        "request_users",
         "request_chat",
         "web_app",
     ]
