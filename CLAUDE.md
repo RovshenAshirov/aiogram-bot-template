@@ -18,7 +18,7 @@ There is no test suite. Quick sanity check after dependency changes: `uv run pyt
 
 ## Configuration
 
-`data/config.py` reads all settings from env / `.env` via `environs` at import time — every variable is required (no defaults). Required: `BOT_TOKEN`, `LOGGING_LEVEL`, `PG_*` (Postgres), `FSM_*` (Redis for FSM storage), `CACHE_*` (separate Redis for cache), `USE_WEBHOOK`, `USE_CUSTOM_API_SERVER`. Webhook-only vars (`MAIN_WEBHOOK_*`, `MAX_UPDATES_IN_QUEUE`) and custom-API-server vars (`CUSTOM_API_SERVER_*`) are only defined when their flag is true — referencing them otherwise raises `AttributeError`.
+`data/config.py` reads all settings from env / `.env` (template: `example.env`) via `environs` at import time — every variable is required (no defaults). Required: `BOT_TOKEN`, `LOGGING_LEVEL`, `PG_*` (Postgres), `FSM_*` (Redis for FSM storage), `CACHE_*` (separate Redis for cache), `USE_WEBHOOK`, `USE_CUSTOM_API_SERVER`. Webhook-only vars (`MAIN_WEBHOOK_*`, `MAX_UPDATES_IN_QUEUE`) and custom-API-server vars (`CUSTOM_API_SERVER_*`) are only defined when their flag is true — referencing them otherwise raises `AttributeError`.
 
 `PG_HOST` may be a unix-socket directory (e.g. `/var/run/postgresql`) for local peer auth with an empty `PG_PASSWORD`; empty Redis passwords are also accepted.
 
@@ -35,3 +35,9 @@ There is no test suite. Quick sanity check after dependency changes: `uv run pyt
 - **States** in `states/`, **filters** in `filters/` (e.g. `ChatTypeFilter`), callback data factories in `keyboards/inline/callbacks.py`.
 
 User-facing strings and error messages in the template are in Russian.
+
+## Rules
+
+- Write code comments (including in config files like `example.env`) in English.
+- Comment only what isn't obvious from the code; no redundant or explanatory-filler comments.
+- Commit directly to the current branch (including `master`); never create a separate branch for a commit.
