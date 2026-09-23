@@ -3,8 +3,8 @@ import sys
 
 import structlog
 
-import models.base
 from data import config
+from models.base import orjson_dumps
 
 
 def setup_logger() -> structlog.typing.FilteringBoundLogger:
@@ -31,7 +31,7 @@ def setup_logger() -> structlog.typing.FilteringBoundLogger:
         processors = shared_processors + [
             structlog.processors.TimeStamper(fmt=None, utc=True),
             structlog.processors.dict_tracebacks,
-            structlog.processors.JSONRenderer(serializer=models.base.orjson_dumps),
+            structlog.processors.JSONRenderer(serializer=orjson_dumps),
         ]
     structlog.configure(
         processors=processors,

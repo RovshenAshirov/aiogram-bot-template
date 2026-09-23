@@ -3,12 +3,10 @@ from typing import Optional, Type, TypeVar
 import asyncpg
 import structlog
 
-from ..basestorage.storage import RawConnection
-
 T = TypeVar("T")
 
 
-class PostgresConnection(RawConnection):
+class PostgresConnection:
     def __init__(
         self,
         connection_poll: asyncpg.Pool,
@@ -38,6 +36,7 @@ class PostgresConnection(RawConnection):
                 self._logger = self._logger.bind(error=e)
                 self._logger.error(f"{e}")
                 self._logger = self._logger.unbind("error")
+                raise  # a DB failure must not look like "no rows"
             else:
                 if raw:
                     return [_convert_to_model(i, model_type) for i in raw]
@@ -63,6 +62,7 @@ class PostgresConnection(RawConnection):
                 self._logger = self._logger.bind(error=e)
                 self._logger.error(f"{e}")
                 self._logger = self._logger.unbind("error")
+                raise  # a DB failure must not look like "no rows"
             else:
                 if raw is not None:
                     return _convert_to_model(raw, model_type)
@@ -87,6 +87,7 @@ class PostgresConnection(RawConnection):
                 self._logger = self._logger.bind(error=e)
                 self._logger.error(f"{e}")
                 self._logger = self._logger.unbind("error")
+                raise  # a DB failure must not look like "no rows"
 
 
 def _convert_to_model(data: asyncpg.Record, model: Type[T]) -> T:

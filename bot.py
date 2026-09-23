@@ -11,10 +11,11 @@ from aiogram.fsm.storage.redis import RedisStorage
 from aiohttp import web
 from redis.asyncio import ConnectionPool, Redis
 
-import handlers
-import utils.logging
 from data import config
-from middlewares import StructLoggingMiddleware
+from handlers.admin import prepare_router as prepare_admin_router
+from handlers.user import prepare_router as prepare_user_router
+from middlewares.logging import StructLoggingMiddleware
+from utils.logging import setup_logger
 
 
 async def create_db_connections(dp: Dispatcher):
@@ -49,7 +50,8 @@ async def create_db_connections(dp: Dispatcher):
 
 
 def setup_handlers(dp: Dispatcher):
-    dp.include_router(handlers.user.prepare_router())
+    dp.include_router(prepare_admin_router())
+    dp.include_router(prepare_user_router())
 
 
 def setup_middlewares(dp: Dispatcher):
@@ -62,11 +64,11 @@ def setup_middlewares(dp: Dispatcher):
 
 def setup_logging(dp: Dispatcher):
     dp["business_logger_init"] = {"type": "business"}
-    dp["business_logger"] = utils.logging.setup_logger().bind(
+    dp["business_logger"] = setup_logger().bind(
         **dp["business_logger_init"]
     )
     dp["aiogram_logger_init"] = {"type": "aiogram"}
-    dp["aiogram_logger"] = utils.logging.setup_logger().bind(
+    dp["aiogram_logger"] = setup_logger().bind(
         **dp["aiogram_logger_init"]
     )
     dp["db_logger_init"] = {}
@@ -111,12 +113,12 @@ async def on_shutdown_polling(dispatcher: Dispatcher):
 
 
 def setup_aiohttp_app(bot: Bot, dp: Dispatcher) -> web.Application:
-    import web_handlers
+    from web_handlers.tg_updates import tg_updates_app
 
     scheduler = aiojobs.Scheduler()
     app = web.Application()
     subapps: list[tuple[str, web.Application]] = [
-        ("/tg/webhooks/", web_handlers.tg_updates_app),
+        ("/tg/webhooks/", tg_updates_app),
     ]
     for prefix, subapp in subapps:
         subapp["bot"] = bot
