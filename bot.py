@@ -185,7 +185,10 @@ async def main():
             port=config.MAIN_WEBHOOK_LISTENING_PORT,
         )
         await site.start()
-        await asyncio.Event().wait()
+        try:
+            await asyncio.Event().wait()
+        finally:  # runs on_shutdown_webhook
+            await runner.cleanup()
     else:
         await bot.delete_webhook(drop_pending_updates=True)
         dp.startup.register(on_startup_polling)

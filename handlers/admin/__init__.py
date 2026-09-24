@@ -15,6 +15,6 @@ def prepare_router():
 
     admin_router.message.register(ad.start_ad, Command("ad"))
     admin_router.message.register(ad.cancel_ad, Command("cancel"), StateFilter(Advertisement.ad))
-    admin_router.message.register(ad.send_ad, StateFilter(Advertisement.ad))
+    admin_router.message.register(ad.send_ad, StateFilter(Advertisement.ad), ~F.text.startswith("/"))  # other commands fall through to the user router
 
     return admin_router

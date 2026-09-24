@@ -12,9 +12,10 @@ uv run python bot.py        # run (needs env vars / .env, see below)
 uv run ruff check .         # lint (E, F, B; E501 ignored)
 uv run black .              # format (don't run over existing code, see Rules)
 uv run mypy                 # type-check; entry is bot.py, follows its imports
+uv run python -m unittest discover -s tests -t .   # test suite (stdlib unittest)
 ```
 
-There is no test suite. Quick sanity check after dependency changes: `uv run python -c "import bot"` (needs a complete `.env`). Local Postgres and Redis are needed to run the bot.
+Tests need no Postgres, Redis or network: `tests/__init__.py` sets fake env vars (limit discovery to `tests/`, otherwise packages importing `data.config` load the real `.env` first), and `tests/helpers.py` has `FakeBot` (records API calls, `responses[MethodName]` sets results), `FakeRedis` (only the throttling pipeline), `FakeDB` and `make_dp()`, which wires the real routers and middlewares like `bot.py`. Handler tests feed updates through that dispatcher. Quick sanity check after dependency changes: `uv run python -c "import bot"` (needs a complete `.env`). Local Postgres and Redis are needed to run the bot.
 
 ## Configuration
 
@@ -31,7 +32,7 @@ There is no test suite. Quick sanity check after dependency changes: `uv run pyt
   - `StructLoggingMiddleware` — outer on `dp.update`; logs received (DEBUG, includes user-typed text) and handled/unhandled/failed (INFO, no user text) with timing, and returns the handler result.
   - `ThrottlingMiddleware` — outer on `dp.message` and `dp.callback_query`; drops a user's updates closer than 100 ms apart (Redis `INCR` + `PEXPIRE NX`, needs Redis ≥ 7.0), warns once per window.
 - **Errors**: `handlers/error` router logs every unhandled exception; for non-Telegram-API errors it also tells the user "Xatolik yuz berdi" (message reply or callback alert). Telegram API errors are logged as warnings only.
-- **Admin**: `/ad` sets `Advertisement.ad` state; the next message is `copy_message`d to every user (~20 msg/s, retries on `RetryAfter`), `/cancel` aborts. `/stats` shows the user count.
+- **Admin**: `/ad` sets `Advertisement.ad` state; the next message that isn't a command is `copy_message`d to every user (other commands like `/help` still work meanwhile) (~20 msg/s, retries on `RetryAfter`), `/cancel` aborts. `/stats` shows the user count.
 - **DB layer** (`db/db_api/`): `PostgresConnection` (`postgresql.py`) provides `_fetch`/`_fetchrow`/`_execute` over the asyncpg pool, mapping rows into model classes via `model(**record)`. Subclass it with domain-specific query methods (`UsersRepo`). Errors are logged and re-raised, never swallowed, so `None`/`[]` always mean "no rows". `db/cache/` is an empty placeholder.
 - **Webhook mode**: `web_handlers/tg_updates.py` is an aiohttp sub-app mounted at `/tg/webhooks/`, route `/bot/{token}`. It verifies the secret-token header and the path token, then spawns update processing on a shared `aiojobs.Scheduler` (bounded by `MAX_UPDATES_IN_QUEUE`, returns 429 when full). Shutdown calls `scheduler.wait_and_close()` before closing the bot session. New HTTP endpoints go into the `subapps` list in `setup_aiohttp_app`.
 - **Models**: `models/base.py` — project-wide pydantic v2 `BaseModel` base (empty hook for shared `model_config`); also holds `orjson_dumps` used by the JSON log renderer (`utils/log.py` — deliberately not `logging.py`, which shadowed the stdlib module when running files under `utils/` directly). `models/user.py` — `User` row model.
