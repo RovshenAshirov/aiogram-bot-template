@@ -8,7 +8,7 @@ BOT_TOKEN: str = env.str("BOT_TOKEN")
 LOGGING_LEVEL: int = env.int("LOGGING_LEVEL")
 
 ADMINS: list[int] = env.list("ADMINS", subcast=int)
-CHANNELS: list[str] = env.list("CHANNELS")
+# CHANNELS: list[str] = env.list("CHANNELS")
 
 PG_HOST: str = env.str("PG_HOST")
 PG_PORT: int = env.int("PG_PORT")

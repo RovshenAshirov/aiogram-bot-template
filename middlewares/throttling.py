@@ -21,7 +21,9 @@ class ThrottlingMiddleware(BaseMiddleware):
         key = f"throttle:{user.id}"
         # INCR + PEXPIRE NX in one transaction: a TTL is always set, even if the key expired just before (Redis >= 7.0)
         async with self.redis.pipeline(transaction=True) as pipe:
-            count, _ = await pipe.incr(key).pexpire(key, self.rate_ms, nx=True).execute()
+            pipe.incr(key)  # buffered, not awaited: redis-py types pipeline commands as Awaitable
+            pipe.pexpire(key, self.rate_ms, nx=True)
+            count, _ = await pipe.execute()
         if count == 1:
             return await handler(event, data)
         warn = count == 2  # warn once per window
