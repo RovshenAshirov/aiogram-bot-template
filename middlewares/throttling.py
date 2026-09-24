@@ -19,9 +19,12 @@ class ThrottlingMiddleware(BaseMiddleware):
         if user is None:
             return await handler(event, data)
         key = f"throttle:{user.id}"
-        if await self.redis.set(key, 1, px=self.rate_ms, nx=True):  # SET NX PX is atomic, so the key can't outlive its TTL
+        # INCR + PEXPIRE NX in one transaction: a TTL is always set, even if the key expired just before (Redis >= 7.0)
+        async with self.redis.pipeline(transaction=True) as pipe:
+            count, _ = await pipe.incr(key).pexpire(key, self.rate_ms, nx=True).execute()
+        if count == 1:
             return await handler(event, data)
-        warn = await self.redis.incr(key) == 2  # incr keeps the TTL; warn once per window
+        warn = count == 2  # warn once per window
         if isinstance(event, CallbackQuery):
             await event.answer(THROTTLED_TEXT if warn else None)
         elif isinstance(event, Message) and warn:
