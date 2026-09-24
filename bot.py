@@ -19,7 +19,10 @@ from handlers.error import prepare_router as prepare_error_router
 from handlers.group import prepare_router as prepare_group_router
 from handlers.user import prepare_router as prepare_user_router
 from middlewares.logging import StructLoggingMiddleware
-from utils.logging import setup_logger
+from middlewares.throttling import ThrottlingMiddleware
+from utils.log import setup_logger
+from utils.notify_admins import notify_admins
+from utils.set_bot_commands import set_bot_commands
 
 
 async def create_db_connections(dp: Dispatcher):
@@ -68,6 +71,9 @@ def setup_middlewares(dp: Dispatcher):
             logger=dp["aiogram_logger"], logger_init_values=dp["aiogram_logger_init"]
         )
     )
+    throttling = ThrottlingMiddleware(dp["cache_pool"])
+    dp.message.outer_middleware(throttling)
+    dp.callback_query.outer_middleware(throttling)
 
 
 def setup_logging(dp: Dispatcher):
@@ -167,6 +173,8 @@ async def main():
     )
 
     await setup_aiogram(dp)
+    await set_bot_commands(bot, dp["aiogram_logger"])
+    await notify_admins(bot, "Bot ishga tushdi", dp["aiogram_logger"])
 
     if config.USE_WEBHOOK:
         runner = web.AppRunner(setup_aiohttp_app(bot, dp))

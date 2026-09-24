@@ -3,9 +3,14 @@ from typing import Any, Awaitable, Callable, cast
 
 import structlog.typing
 from aiogram import BaseMiddleware
+from aiogram.dispatcher.event.bases import UNHANDLED
 from aiogram.types import TelegramObject, Update
 
 HANDLED_STR = ["Unhandled", "Handled"]
+
+
+def _spent_ms(started: float) -> float:
+    return round((time.time() - started) * 10000) / 10
 
 
 class StructLoggingMiddleware(BaseMiddleware):
@@ -34,23 +39,22 @@ class StructLoggingMiddleware(BaseMiddleware):
             )
             if message.from_user is not None:
                 logger = logger.bind(user_id=message.from_user.id)
+            content: dict[str, Any] = {}  # user-typed, so DEBUG only
             if message.text:
-                logger = logger.bind(text=message.text, entities=message.entities)
+                content.update(text=message.text, entities=message.entities)
+            if message.caption:
+                content.update(caption=message.caption, caption_entities=message.caption_entities)
             if message.video:
                 logger = logger.bind(
-                    caption=message.caption,
-                    caption_entities=message.caption_entities,
                     video_id=message.video.file_id,
                     video_unique_id=message.video.file_unique_id,
                 )
             if message.photo:
                 logger = logger.bind(
-                    caption=message.caption,
-                    caption_entities=message.caption_entities,
                     photo_id=message.photo[-1].file_id,
                     photo_unique_id=message.photo[-1].file_unique_id,
                 )
-            logger.debug("Received message")
+            logger.debug("Received message", **content)
         elif event.callback_query:
             c = event.callback_query
             logger = logger.bind(
@@ -72,15 +76,14 @@ class StructLoggingMiddleware(BaseMiddleware):
             logger = logger.bind(
                 query_id=query.id,
                 user_id=query.from_user.id,
-                query=query.query,
                 offset=query.offset,
                 chat_type=query.chat_type,
                 location=query.location,
             )
-            logger.debug("Received inline query")
+            logger.debug("Received inline query", query=query.query)
         elif event.my_chat_member:
             upd = event.my_chat_member
-            logger = self.logger.bind(
+            logger = logger.bind(
                 user_id=upd.from_user.id,
                 chat_id=upd.chat.id,
                 old_state=upd.old_chat_member,
@@ -96,19 +99,26 @@ class StructLoggingMiddleware(BaseMiddleware):
                 new_state=upd.new_chat_member,
             )
             logger.debug("Received chat member update")
-        await handler(event, data)
+        try:
+            result = await handler(event, data)
+        except Exception:
+            # traceback is logged by handlers/errors; here only the update context and timing
+            logger.warning("Failed to handle update", process_result=False, spent_time_ms=_spent_ms(_started_processing_at))
+            raise
+        handled = result is not UNHANDLED
         logger = logger.bind(
-            process_result=True,
-            spent_time_ms=round((time.time() - _started_processing_at) * 10000) / 10,
+            process_result=handled,
+            spent_time_ms=_spent_ms(_started_processing_at),
         )
+        status = HANDLED_STR[handled]
         if event.message:
-            logger.info("Handled message")
+            logger.info(f"{status} message")
         elif event.callback_query:
-            logger.info("Handled callback query")
+            logger.info(f"{status} callback query")
         elif event.inline_query:
-            logger.info("Handled inline query")
+            logger.info(f"{status} inline query")
         elif event.my_chat_member:
-            logger.info("Handled my chat member update")
+            logger.info(f"{status} my chat member update")
         elif event.chat_member:
-            logger.info("Handled chat member update")
-        return
+            logger.info(f"{status} chat member update")
+        return result
